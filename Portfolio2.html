@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Md Miraz Hossain | Tax & Regulatory Specialist</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,700;1,400&family=Public+Sans:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper: #f4f1ea;
+            --ink-blue: #1e3a8a;
+            --ink-red: #991b1b;
+            --pencil: #4b5563;
+            --ruling: rgba(30, 58, 138, 0.1);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Public Sans', sans-serif;
+            background-color: #d1ccc0; /* Desk surface color */
+            color: var(--ink-blue);
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* 3D Canvas Background */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at center, #e5e1d8 0%, #d1ccc0 100%);
+        }
+
+        /* Interaction Layer for Ink Line Effect */
+        #ink-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9998;
+        }
+
+        /* Custom Fountain Pen Nib Cursor */
+        #custom-cursor {
+            width: 12px;
+            height: 12px;
+            background: var(--ink-blue);
+            border-radius: 50% 50% 50% 0;
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            transition: transform 0.1s ease-out, width 0.2s, height 0.2s, background-color 0.2s;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        }
+
+        #custom-cursor.hovering {
+            width: 20px;
+            height: 20px;
+            background-color: var(--ink-red);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        /* Paper Document Styles */
+        .ledger-paper {
+            background-color: var(--paper);
+            background-image: linear-gradient(var(--ruling) 1px, transparent 1px);
+            background-size: 100% 24px;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.1), 0 0 1px rgba(0,0,0,0.2);
+            border: 1px solid #e2e2e2;
+            position: relative;
+        }
+
+        .ledger-paper::before {
+            content: '';
+            position: absolute;
+            left: 40px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: rgba(153, 27, 27, 0.2); /* Margin line */
+        }
+
+        .stamp-accent {
+            border: 3px double var(--ink-red);
+            color: var(--ink-red);
+            padding: 4px 12px;
+            text-transform: uppercase;
+            font-weight: 900;
+            transform: rotate(-12deg);
+            display: inline-block;
+            font-family: 'Crimson Pro', serif;
+            opacity: 0.8;
+        }
+
+        .serif-italic {
+            font-family: 'Crimson Pro', serif;
+            font-style: italic;
+        }
+
+        /* Navigation */
+        .sticky-nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            background: rgba(244, 241, 234, 0.9);
+            backdrop-filter: blur(5px);
+            border-bottom: 2px solid var(--ink-blue);
+        }
+
+        .nav-link {
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            font-weight: 700;
+            color: var(--ink-blue);
+            position: relative;
+            cursor: none;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: var(--ink-red);
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        /* Profile Hover Image */
+        .name-container {
+            position: relative;
+        }
+
+        #hover-profile-img {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 220px; /* Increased size */
+            height: 220px; /* Increased size */
+            object-fit: cover;
+            border: 6px solid var(--paper); /* Thicker border for larger scale */
+            box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            z-index: 101;
+            border-radius: 4px;
+        }
+
+        .name-container:hover #hover-profile-img {
+            opacity: 1;
+            transform: translateY(20px);
+        }
+
+        .section-enter {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .section-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Red/Blue Toggle Buttons */
+        .btn-primary {
+            background: var(--ink-blue);
+            color: white;
+            border-radius: 2px;
+            box-shadow: 2px 2px 0px var(--pencil);
+            transition: all 0.2s;
+            cursor: none;
+        }
+
+        .btn-primary:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 3px 3px 0px var(--pencil);
+        }
+
+        input, textarea, a {
+            cursor: none !important;
+        }
+
+        @media (hover: none) {
+            #custom-cursor, #ink-canvas { display: none; }
+            body { cursor: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    <canvas id="ink-canvas"></canvas>
+    <div id="custom-cursor"></div>
+
+    <!-- Navigation -->
+    <nav class="sticky-nav px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="name-container interactive">
+                <div class="text-xl font-bold tracking-tighter">
+                    <span class="serif-italic">Md.</span> MIRAZ HOSSAIN
+                </div>
+                <!-- Profile Image that appears on hover -->
+                <img src="image.png" alt="Md Miraz Hossain" id="hover-profile-img" onerror="this.style.display='none'">
+            </div>
+            <div class="hidden md:flex space-x-10">
+                <a href="#home" class="nav-link interactive">Docket</a>
+                <a href="#competencies" class="nav-link interactive">Expertise</a>
+                <a href="#journey" class="nav-link interactive">Professional</a>
+                <a href="#contact" class="nav-link interactive" style="color: var(--ink-red);">Inquire</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="min-h-screen flex items-center px-6 pt-20">
+        <div class="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12">
+            <div class="lg:col-span-7">
+                <h1 class="text-6xl md:text-8xl font-bold mb-6 leading-none text-blue-900">
+                    Precise <span class="serif-italic text-red-700">Tax</span> <br>Consultancy.
+                </h1>
+                <p class="text-lg text-gray-700 mb-10 max-w-xl leading-relaxed font-medium">
+                    Tax and Regulatory Specialist dedicated to safeguarding corporate and individual interests through rigorous compliance and strategic representation.
+                </p>
+                <div class="flex flex-wrap gap-4">
+                    <button onclick="document.getElementById('competencies').scrollIntoView({behavior:'smooth'})" class="btn-primary px-8 py-4 uppercase text-xs font-bold tracking-widest interactive">Review Competencies</button>
+                    <a href="https://www.facebook.com/miraz.bot.2025" target="_blank" class="px-8 py-4 border-2 border-blue-900 text-blue-900 font-bold uppercase text-xs tracking-widest hover:bg-blue-50 transition interactive">Secure Contact</a>
+                </div>
+            </div>
+            <div class="lg:col-span-5 flex justify-center items-center">
+                <div class="ledger-paper p-12 max-w-md transform rotate-2 hover:rotate-0 transition-transform duration-500">
+                    <div class="stamp-accent mb-8">Confidential</div>
+                    <h2 class="text-2xl font-bold mb-4 serif-italic text-blue-900">Mission Statement</h2>
+                    <p class="text-gray-700 italic leading-relaxed text-sm">
+                        "Intend to work in a challenging competitive environment which will provide me with the opportunity to flourish my talent and to utilize the hidden potentials within myself so that the organization can reap maximum benefit."
+                    </p>
+                    <div class="mt-10 pt-6 border-t border-gray-300">
+                        <p class="text-[10px] uppercase font-bold tracking-widest opacity-60 mb-1">Authenticity Guaranteed</p>
+                        <p class="text-sm font-bold serif-italic text-blue-800">MD MIRAZ HOSSAIN</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Competencies -->
+    <section id="competencies" class="py-32 px-6 max-w-7xl mx-auto">
+        <div class="flex items-center gap-4 mb-16">
+            <h2 class="text-4xl font-bold text-blue-900">Practice Areas</h2>
+            <div class="flex-grow h-[2px] bg-red-800 opacity-20"></div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <div class="ledger-paper p-10 section-enter">
+                <p class="text-[10px] font-bold text-red-700 mb-2">REF: 001</p>
+                <h3 class="text-xl font-bold mb-4 text-blue-900 uppercase">Income Tax Return</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">Expert preparation and filing for Individuals and Companies, ensuring full alignment with current tax ordinances.</p>
+            </div>
+            
+            <div class="ledger-paper p-10 section-enter">
+                <p class="text-[10px] font-bold text-red-700 mb-2">REF: 002</p>
+                <h3 class="text-xl font-bold mb-4 text-blue-900 uppercase">Litigation & Appeals</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">Drafting and moving Time Petitions and representing clients in Tribunal proceedings and Tax Appeals.</p>
+            </div>
+
+            <div class="ledger-paper p-10 section-enter">
+                <p class="text-[10px] font-bold text-red-700 mb-2">REF: 003</p>
+                <h3 class="text-xl font-bold mb-4 text-blue-900 uppercase">Withholding Tax (TDS)</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">Comprehensive management of TDS returns and timely submissions to maintain clean regulatory standing.</p>
+            </div>
+
+            <div class="ledger-paper p-10 section-enter">
+                <p class="text-[10px] font-bold text-red-700 mb-2">REF: 004</p>
+                <h3 class="text-xl font-bold mb-4 text-blue-900 uppercase">Asset Valuation</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">Precision valuation for tax purposes and detailed net wealth statement preparation for high-net-worth clients.</p>
+            </div>
+
+            <div class="ledger-paper p-10 section-enter">
+                <p class="text-[10px] font-bold text-red-700 mb-2">REF: 005</p>
+                <h3 class="text-xl font-bold mb-4 text-blue-900 uppercase">Procurement</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">Liaising with tax offices to procure Certified Copies and managing all Tax-related Challans efficiently.</p>
+            </div>
+
+            <div class="ledger-paper p-10 section-enter bg-blue-50/30">
+                <p class="text-[10px] font-bold text-blue-800 mb-2">SYSTEMS</p>
+                <h3 class="text-xl font-bold mb-4 text-blue-900 uppercase">Tools & Technical</h3>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <span class="text-[9px] px-2 py-1 border border-blue-900/20 font-bold">MS WORD</span>
+                    <span class="text-[9px] px-2 py-1 border border-blue-900/20 font-bold">MS EXCEL</span>
+                    <span class="text-[9px] px-2 py-1 border border-blue-900/20 font-bold">PHOTOSHOP</span>
+                    <span class="text-[9px] px-2 py-1 border border-blue-900/20 font-bold">CANVA</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Education Journey -->
+    <section id="journey" class="py-32 px-6">
+        <div class="max-w-4xl mx-auto">
+            <div class="ledger-paper p-12 section-enter">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 border-b-2 border-blue-900 pb-4">
+                    <h2 class="text-3xl font-bold text-blue-900">Professional Background</h2>
+                    <span class="stamp-accent">Credentialed</span>
+                </div>
+                <div class="pl-4 md:pl-10">
+                    <h3 class="text-2xl font-bold text-red-800">Chartered Accountancy</h3>
+                    <p class="text-blue-900 font-bold uppercase text-xs mb-6 tracking-widest">S. R. Islam & Co. Chartered Accountants</p>
+                    <p class="text-gray-700 text-base leading-relaxed italic">
+                        Successfully completed the CA Course Certificate (CC), gaining deep technical exposure to audit procedures, taxation laws, and financial reporting standards within a reputable professional practice.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" class="py-32 px-6 max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+            <div class="section-enter">
+                <h2 class="text-4xl font-bold text-blue-900 mb-8">Formal Registry</h2>
+                <div class="space-y-8">
+                    <div class="flex items-center gap-6">
+                        <div class="w-12 h-12 ledger-paper flex items-center justify-center text-red-800">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 00-2 2z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">E-Mail</p>
+                            <p class="text-lg font-bold">miraz.sric@gmail.com</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6">
+                        <div class="w-12 h-12 ledger-paper flex items-center justify-center text-red-800">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Contact Number</p>
+                            <p class="text-lg font-bold">+880 1976 395 755</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6">
+                        <div class="w-12 h-12 ledger-paper flex items-center justify-center text-red-800">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Address</p>
+                            <p class="text-lg font-bold">Azimpur, Dhaka-1205</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ledger-paper p-12 section-enter">
+                <form id="contactForm" class="space-y-6">
+                    <div>
+                        <label class="text-[10px] font-bold text-red-800 uppercase tracking-widest block mb-2">Subject / Name</label>
+                        <input type="text" name="name" required class="w-full bg-transparent border-b-2 border-blue-900/30 focus:border-blue-900 outline-none py-2 font-bold text-sm interactive">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-red-800 uppercase tracking-widest block mb-2">Email Address</label>
+                        <input type="email" name="email" required class="w-full bg-transparent border-b-2 border-blue-900/30 focus:border-blue-900 outline-none py-2 font-bold text-sm interactive">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-red-800 uppercase tracking-widest block mb-2">Statement of Intent</label>
+                        <textarea name="message" rows="4" required class="w-full bg-transparent border-b-2 border-blue-900/30 focus:border-blue-900 outline-none py-2 font-bold text-sm interactive"></textarea>
+                    </div>
+                    <button type="submit" id="submitBtn" class="btn-primary w-full py-4 text-xs font-bold tracking-[0.2em] uppercase mt-4 interactive">Submit Official Inquiry</button>
+                </form>
+                <div id="successMessage" class="hidden text-center py-10">
+                    <span class="stamp-accent text-xl">Acknowledged</span>
+                    <p class="text-xs mt-4 text-gray-600 font-bold uppercase tracking-widest">Response pending formal review.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="py-20 text-center text-blue-900/40">
+        <p class="serif-italic text-xl mb-2">"Sincere, Punctual and dutiful to work."</p>
+        <p class="text-[10px] font-bold uppercase tracking-[0.4em]">© 2024 MD MIRAZ HOSSAIN | OFFICIAL DOSSIER</p>
+    </footer>
+
+    <script>
+        // --- 3D SCENE: FLOATING LEDGER SHEETS ---
+        let scene, camera, renderer, papers = [];
+        const mouse = new THREE.Vector2();
+
+        function initThree() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 10;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(5, 5, 5).normalize();
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+            const paperCount = 20;
+            const paperGeometry = new THREE.PlaneGeometry(3, 4);
+            
+            for(let i=0; i<paperCount; i++) {
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    side: THREE.DoubleSide,
+                    roughness: 0.8,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                const mesh = new THREE.Mesh(paperGeometry, material);
+                
+                mesh.position.set(
+                    (Math.random() - 0.5) * 25,
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 10
+                );
+                mesh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
+                
+                mesh.userData = {
+                    rotSpeed: (Math.random() - 0.5) * 0.01,
+                    floatSpeed: (Math.random() - 0.5) * 0.005,
+                    originalPos: mesh.position.clone()
+                };
+                
+                scene.add(mesh);
+                papers.push(mesh);
+            }
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = Date.now() * 0.001;
+            
+            papers.forEach(p => {
+                p.rotation.x += p.userData.rotSpeed;
+                p.rotation.y += p.userData.rotSpeed * 0.5;
+                p.position.y = p.userData.originalPos.y + Math.sin(time + p.position.x) * 0.5;
+                
+                // Mouse interaction
+                p.position.x += (mouse.x * 2 - p.position.x) * 0.02;
+            });
+
+            camera.lookAt(0,0,0);
+            renderer.render(scene, camera);
+        }
+
+        // --- INK LINE DRAWING EFFECT ---
+        const inkCanvas = document.getElementById('ink-canvas');
+        const ctx = inkCanvas.getContext('2d');
+        let points = [];
+        const MAX_POINTS = 50;
+        let isHoveringInteractive = false;
+
+        function resizeCanvas() {
+            inkCanvas.width = window.innerWidth;
+            inkCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function inkLoop() {
+            ctx.clearRect(0, 0, inkCanvas.width, inkCanvas.height);
+            
+            // Only add point if NOT hovering over a button or link
+            if (!isHoveringInteractive) {
+                points.push({ x: mouseX, y: mouseY, age: 0 });
+            } else {
+                // If hovering, add a "null" point to break the line continuity
+                points.push(null);
+            }
+            
+            // Limit points and update ages
+            if (points.length > MAX_POINTS) points.shift();
+            
+            for (let i = 0; i < points.length; i++) {
+                if (points[i]) points[i].age += 1;
+            }
+
+            if (points.length > 2) {
+                ctx.strokeStyle = '#991b1b'; // Ink red
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                for (let i = 0; i < points.length - 2; i++) {
+                    // Skip if current or next points are missing (hover breaks)
+                    if (!points[i] || !points[i+1] || !points[i+2]) continue;
+
+                    const xc = (points[i].x + points[i + 1].x) / 2;
+                    const yc = (points[i].y + points[i + 1].y) / 2;
+                    
+                    const opacity = 1 - (points[i].age / MAX_POINTS);
+                    const width = (1 - (points[i].age / MAX_POINTS)) * 3;
+                    
+                    ctx.beginPath();
+                    ctx.lineWidth = width;
+                    ctx.globalAlpha = opacity;
+                    ctx.moveTo(xc, yc);
+                    ctx.quadraticCurveTo(points[i+1].x, points[i+1].y, (points[i+1].x + points[i+2].x)/2, (points[i+1].y + points[i+2].y)/2);
+                    ctx.stroke();
+                }
+            }
+            requestAnimationFrame(inkLoop);
+        }
+
+        // --- CURSOR LOGIC ---
+        let mouseX = 0, mouseY = 0;
+        const cursor = document.getElementById('custom-cursor');
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+
+            // Detect if target is interactive
+            const target = e.target;
+            const isInteractive = target.closest('button, a, input, textarea, .interactive');
+            if (isInteractive) {
+                isHoveringInteractive = true;
+                cursor.classList.add('hovering');
+            } else {
+                isHoveringInteractive = false;
+                cursor.classList.remove('hovering');
+            }
+        });
+
+        // --- OBSERVERS ---
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('section-visible'); });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.section-enter').forEach(el => observer.observe(el));
+
+        // --- FORM ---
+        document.getElementById("contactForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.textContent = "REGISTERING...";
+            const data = new FormData(e.target);
+            const response = await fetch("https://formspree.io/f/myknbjqr", { 
+                method: 'POST', body: data, headers: { 'Accept': 'application/json' } 
+            });
+            if (response.ok) {
+                e.target.classList.add('hidden');
+                document.getElementById("successMessage").classList.remove('hidden');
+            }
+        });
+
+        window.onload = () => {
+            initThree();
+            inkLoop();
+        };
+    </script>
+</body>
+</html>
